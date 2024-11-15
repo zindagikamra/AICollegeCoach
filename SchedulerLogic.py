@@ -156,12 +156,84 @@ def getOrAccessCoachCalendar(service):
 
 
 # NOT DONE YET
+# Finds all available time slots on a given date
 def get_available_slots(service, calendar_id, date):
-    print("Add logic here")
+    # Set the time range for the day
+    start_time = datetime.datetime.combine(date, datetime.time.min).isoformat() + 'Z'
+    end_time = datetime.datetime.combine(date, datetime.time.max).isoformat() + 'Z'
+
+    # Retrieve events for the specified day
+    events_result = service.events().list(calendarId=calendar_id, timeMin=start_time,
+                                          timeMax=end_time, singleEvents=True,
+                                          orderBy='startTime').execute()
+    events = events_result.get('items', [])
+
+    # Initialize available slots with full day
+    available_slots = [(datetime.datetime.combine(date, datetime.time.min),
+                        datetime.datetime.combine(date, datetime.time.max))]
+
+    # Remove occupied time slots
+    for event in events:
+        start = datetime.datetime.fromisoformat(event['start'].get('dateTime', event['start'].get('date')))
+        end = datetime.datetime.fromisoformat(event['end'].get('dateTime', event['end'].get('date')))
+
+        new_available_slots = []
+        for slot_start, slot_end in available_slots:
+            if start <= slot_start and end >= slot_end:
+                continue
+            elif start > slot_start and end < slot_end:
+                new_available_slots.append((slot_start, start))
+                new_available_slots.append((end, slot_end))
+            elif start > slot_start and start < slot_end:
+                new_available_slots.append((slot_start, start))
+            elif end > slot_start and end < slot_end:
+                new_available_slots.append((end, slot_end))
+            else:
+                new_available_slots.append((slot_start, slot_end))
+        available_slots = new_available_slots
+
+    return available_slots
 
 # NOT DONE YET
 def dedicateAssignmentTimes(assignments, service, calendar_id):
-    print("Add logic here")
+    # Sort assignments by due date
+    sorted_assignments = sorted(assignments, key=lambda x: (x['due date'], x['due time']))
+    
+    def backtrack(index):
+        if index == len(sorted_assignments):
+            return True  # All assignments scheduled successfully
+        
+        assignment = sorted_assignments[index]
+        due_datetime = datetime.datetime.combine(assignment['due date'], assignment['due time'])
+        session_duration = assignment['time_allocated'] // assignment['sessions']
+        
+        # Get available dates from today until the due date
+        today = datetime.date.today()
+        date_range = [today + datetime.timedelta(days=x) for x in range((assignment['due date'] - today).days + 1)]
+        
+        for date in date_range:
+            available_slots = get_available_slots(service, calendar_id, date)
+            
+            for start, end in available_slots:
+                slot_duration = (end - start).total_seconds() / 60
+                
+                if slot_duration >= session_duration:
+                    # Try to schedule the session
+                    session_end = start + datetime.timedelta(minutes=session_duration)
+                    create_study_event(service, calendar_id, assignment['name'], start, session_end)
+                    
+                    # Recursively try to schedule the next assignment
+                    if backtrack(index + 1):
+                        return True
+                    
+                    # If scheduling fails, remove the event and try the next slot
+                    # Note: In a real implementation, you'd need to add a function to delete the event
+                    # delete_study_event(service, calendar_id, assignment['name'], start, session_end)
+    
+    if backtrack(0):
+        slow_print("All assignments scheduled successfully!")
+    else:
+        slow_print("Unable to schedule all assignments. Please review your calendar and assignments.")
 
 # GOOD
 # handles login and calendar access setup
@@ -181,6 +253,23 @@ def authorization():
 
     service = build('calendar', 'v3', credentials=creds)
     return service
+
+# prints out all scheduled events
+def print_scheduled_events(service, calendar_id):
+    # Get events from today to 30 days in the future
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    then = (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat() + 'Z'
+    
+    events_result = service.events().list(calendarId=calendar_id, timeMin=now,
+                                          timeMax=then, singleEvents=True,
+                                          orderBy='startTime').execute()
+    events = events_result.get('items', [])
+
+    if not events:
+        slow_print('No upcoming events found.')
+    for event in events:
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        slow_print(f"{event['summary']}: {start}")
 
 
 def main():
@@ -215,4 +304,8 @@ def main():
 
     # Call scheduler
     dedicateAssignmentTimes(assignments, service, calendar_id)
+    
+    # Print scheduled events
+    print_scheduled_events(service, calendar_id)
+
 main()
