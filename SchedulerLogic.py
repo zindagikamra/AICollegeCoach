@@ -109,7 +109,7 @@ def parse_time_slots(time_slots):
     while True:
         time_ranges = re.findall(pattern, time_slots)
         
-        if time_ranges:
+        if time_ranges and len(time_ranges) * 14 == len(time_slots.replace(" ", "").replace(",", "")):
             parsed_slots = []
             for start, end in time_ranges:
                 start_time = datetime.datetime.strptime(start, "%I:%M%p").time()
@@ -195,8 +195,6 @@ def get_available_slots(service, calendar_id, date):
     return available_slots
 
 # NOT DONE YET
-# implemtation detail - needs to make sure that in addition to the time slots being available, 
-# the sesisons are placed in different days (maximally spaced out actually)
 def dedicateAssignmentTimes(assignments, service, calendar_id):
     # Sort assignments by due date
     sorted_assignments = sorted(assignments, key=lambda x: (x['due date'], x['due time']))
