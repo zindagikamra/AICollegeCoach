@@ -23,7 +23,7 @@ def slow_print(text, delay=0.01):
    print()
 
 
-#GOOD
+# GOOD
 # Creates unavailable calendar based on user input
 def create_unavailable_events(service, calendar_id):
    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -44,6 +44,26 @@ def create_unavailable_events(service, calendar_id):
        create_recurrence_events(service, calendar_id, day[:2].upper(), unavailable_slots)
 
 
+# Helper function to create a unavailable event
+def create_event(service, calendar_id, start_datetime, end_datetime, day):
+    event = {
+        'summary': 'Unavailable Time',
+        'start': {
+            'dateTime': start_datetime.isoformat(),
+            'timeZone': 'America/New_York',
+        },
+        'end': {
+            'dateTime': end_datetime.isoformat(),
+            'timeZone': 'America/New_York',
+        },
+        'recurrence': [
+            f'RRULE:FREQ=WEEKLY;BYDAY={day}'
+        ],
+    }
+    service.events().insert(calendarId=calendar_id, body=event).execute()
+    slow_print(f"Created event from {start_datetime} to {end_datetime} for {day}")
+
+
 # GOOD
 # Creates reoccuring events with the given information
 def create_recurrence_events(service, calendar_id, day, unavailable_slots):
@@ -55,40 +75,28 @@ def create_recurrence_events(service, calendar_id, day, unavailable_slots):
 
    # Calculate the difference in days
    days_ahead = (target_weekday - today_weekday) % 7
-
-
-   # If the target day is today, use today's date
-   if days_ahead == 0:
-       date_of_slots = today
-   else:
-       date_of_slots = today + datetime.timedelta(days=days_ahead)
+   date_of_slots = today if days_ahead == 0 else today + datetime.timedelta(days=days_ahead)
 
 
    for start, end in unavailable_slots:
-       # Combine date with time for event start and end
-       start_datetime = datetime.datetime.combine(date_of_slots, start)
-       end_datetime = datetime.datetime.combine(date_of_slots, end)
+        # If the event spans across midnight, split into two events
+        if start > end:
+            # First event: from start_time to midnight of the current day
+            start_datetime = datetime.datetime.combine(date_of_slots, start)
+            end_datetime = datetime.datetime.combine(date_of_slots, datetime.time(23, 59))
+            create_event(service, calendar_id, start_datetime, end_datetime, day)
 
-
-       event = {
-           'summary': 'Unavailable Time',
-           'start': {
-               'dateTime': start_datetime.isoformat(),
-               'timeZone': 'America/New_York',
-           },
-           'end': {
-               'dateTime': end_datetime.isoformat(),
-               'timeZone': 'America/New_York',
-           },
-           'recurrence': [
-               f'RRULE:FREQ=WEEKLY;BYDAY={day}'
-           ],
-       }
-
-
-       # Insert the event into the specified calendar
-       service.events().insert(calendarId=calendar_id, body=event).execute()
-       slow_print(f"Creating event on {date_of_slots} from {start} to {end} for {day}")
+            # Second event: from midnight to end_time of the next day
+            next_day = date_of_slots + datetime.timedelta(days=1)
+            start_datetime = datetime.datetime.combine(next_day, datetime.time(0, 0))
+            end_datetime = datetime.datetime.combine(next_day, end)
+            next_day_name = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'][(target_weekday + 1) % 7]
+            create_event(service, calendar_id, start_datetime, end_datetime, next_day_name)
+        else:
+            # Normal event creation
+            start_datetime = datetime.datetime.combine(date_of_slots, start)
+            end_datetime = datetime.datetime.combine(date_of_slots, end)
+            create_event(service, calendar_id, start_datetime, end_datetime, day)
 
 
 # GOOD
@@ -117,29 +125,30 @@ def create_study_event(service, calendar_id, assignment_name, start_time, end_ti
 
 
 # GOOD
-#Parses passed time slots for blocking unavailable times and converts them into an array for blocking out events
+# Parses passed time slots for blocking unavailable times and converts them into an array for blocking out events
 def parse_time_slots(time_slots):
-   pattern = r'(\d{1,2}:\d{2}[AP]M)-(\d{1,2}:\d{2}[AP]M)'
+    pattern = r'(\d{1,2}:\d{2}[AP]M)-(\d{1,2}:\d{2}[AP]M)'
 
+    while True:
+        time_ranges = re.findall(pattern, time_slots)
 
-   while True:
-       time_ranges = re.findall(pattern, time_slots)
-      
-       if time_ranges and len(time_ranges) * 14 == len(time_slots.replace(" ", "").replace(",", "")):
-           parsed_slots = []
-           for start, end in time_ranges:
-               start_time = datetime.datetime.strptime(start, "%I:%M%p").time()
-               end_time = datetime.datetime.strptime(end, "%I:%M%p").time()
-               if start_time >= end_time:
-                   print(f"Error: Start time {start} should be before end time {end}.")
-                   print("BROKE")
-                   break
-               parsed_slots.append((start_time, end_time))
-           else:
-               return parsed_slots
-       else:
-           slow_print("Incorrect format. Please enter the times in the correct format (e.g., 8:15AM-12:30PM, 1:00PM-3:00PM).")
-           time_slots = input("Enter unavailable times: ")
+        if time_ranges:
+            parsed_slots = []
+            for start, end in time_ranges:
+                start_time = datetime.datetime.strptime(start, "%I:%M%p").time()
+                end_time = datetime.datetime.strptime(end, "%I:%M%p").time()
+
+                if start_time >= end_time:  # Time span across midnight
+                    # Split into two segments: start to midnight, midnight to end
+                    parsed_slots.append((start_time, datetime.time(23, 59)))  # Day 1: Start to 11:59 PM
+                    parsed_slots.append((datetime.time(0, 0), end_time))      # Day 2: Midnight to end
+                else:
+                    parsed_slots.append((start_time, end_time))  # Normal case
+
+            return parsed_slots
+        else:
+            slow_print("Incorrect format. Please enter the times in the correct format (e.g., 8:15AM-12:30PM, 1:00PM-3:00PM).")
+            time_slots = input("Enter unavailable times: ")
 
 
 
