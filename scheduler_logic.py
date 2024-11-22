@@ -14,18 +14,28 @@ import re
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
-# GOOD
-# Prints out output of text decision with slight delay to emulate chatbot style
 def slow_print(text, delay=0.01):
-   for char in text:
+    """
+    Prints out output of text decision with slight delay to emulate chatbot style
+    
+    Args:
+        text (string): String to be printed with the delay
+        delay (float): delay at which to print the characters of the given text (ms)
+    """
+    for char in text:
        print(char, end='', flush=True) 
        time.sleep(delay)
-   print()
+    print()
 
 
-# GOOD
-# Creates unavailable calendar based on user input
 def create_unavailable_events(service, calendar_id):
+   """
+    Creates unavailable calendar based on user input
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+    """
    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
@@ -35,7 +45,8 @@ def create_unavailable_events(service, calendar_id):
 
    for day in days_of_week:
        # Get unavailable times for the day from the user
-       time_slots = input(f"Enter unavailable times for {day}: ")
+       slow_print(f"Enter unavailable times for {day}: ")
+       time_slots = input()
        unavailable_slots = parse_time_slots(time_slots)
 
 
@@ -44,8 +55,17 @@ def create_unavailable_events(service, calendar_id):
        create_recurrence_events(service, calendar_id, day[:2].upper(), unavailable_slots)
 
 
-# Helper function to create a unavailable event
 def create_event(service, calendar_id, start_datetime, end_datetime, day):
+    """
+    Helper function to create a unavailable event
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+        start_datetime (datetime): start time of event being made
+        end_datetime (datetime): end time of event being made
+        day (string): formatted string representing the day of the week an event should be on
+    """
     event = {
         'summary': 'Unavailable Time',
         'start': {
@@ -64,9 +84,16 @@ def create_event(service, calendar_id, start_datetime, end_datetime, day):
     slow_print(f"Created event from {start_datetime} to {end_datetime} for {day}")
 
 
-# GOOD
-# Creates reoccuring events with the given information
 def create_recurrence_events(service, calendar_id, day, unavailable_slots):
+   """
+    Creates reoccuring events with the given information
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+        day (string): formatted string representing the day of the week an event should be on
+        unavailable_slots ([string]): array of formatted strings holding the time slots for the unavailable times
+    """
    # Get the current date and weekday
    today = datetime.date.today()
    today_weekday = today.weekday()  # Monday=0, Sunday=6
@@ -99,9 +126,17 @@ def create_recurrence_events(service, calendar_id, day, unavailable_slots):
             create_event(service, calendar_id, start_datetime, end_datetime, day)
 
 
-# GOOD
-# Creates a study event for the given time slot (creates singular non repeating event)
 def create_study_event(service, calendar_id, assignment_name, start_time, end_time):
+   """
+    Creates a study event for the given time slot (creates singular non repeating event)
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+        assignment_name (string): name of the assignment which's slots are being created
+        start_datetime (datetime): start time of event being made
+        end_datetime (datetime): end time of event being made
+    """
    start_time_utc = start_time.replace(tzinfo=datetime.timezone.utc)
    end_time_utc = end_time.replace(tzinfo=datetime.timezone.utc)
   
@@ -124,9 +159,13 @@ def create_study_event(service, calendar_id, assignment_name, start_time, end_ti
        print(f"An error occurred: {error}")
 
 
-# GOOD
-# Parses passed time slots for blocking unavailable times and converts them into an array for blocking out events
 def parse_time_slots(time_slots):
+    """
+    Parses passed time slots for blocking unavailable times and converts them into an array for blocking out events
+    
+    Args:
+        time_slots (string): time slots entered in a specific format to be converted into unavailable times
+    """
     pattern = r'(\d{1,2}:\d{2}[AP]M)-(\d{1,2}:\d{2}[AP]M)'
 
     while True:
@@ -138,24 +177,28 @@ def parse_time_slots(time_slots):
                 start_time = datetime.datetime.strptime(start, "%I:%M%p").time()
                 end_time = datetime.datetime.strptime(end, "%I:%M%p").time()
 
-                if start_time >= end_time:  # Time span across midnight
+                if start_time >= end_time: 
                     # Split into two segments: start to midnight, midnight to end
-                    parsed_slots.append((start_time, datetime.time(23, 59)))  # Day 1: Start to 11:59 PM
-                    parsed_slots.append((datetime.time(0, 0), end_time))      # Day 2: Midnight to end
+                    parsed_slots.append((start_time, datetime.time(23, 59)))  
+                    parsed_slots.append((datetime.time(0, 0), end_time))     
                 else:
-                    parsed_slots.append((start_time, end_time))  # Normal case
+                    parsed_slots.append((start_time, end_time)) 
 
             return parsed_slots
         else:
             slow_print("Incorrect format. Please enter the times in the correct format (e.g., 8:15AM-12:30PM, 1:00PM-3:00PM).")
-            time_slots = input("Enter unavailable times: ")
+            slow_print("Enter unavailable times: ")
+            time_slots = input()
 
 
 
-
-# GOOD
-# Finds stored coach calendar from the local calendar id file and if none located, then creates a new one.
 def getOrAccessCoachCalendar(service):
+   """
+    Finds stored coach calendar from the local calendar id file and if none located, then creates a new one.
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+    """
    # Check if we already have a saved calendar ID
    calendar_id_file = 'calendar_id.json'
    if os.path.exists(calendar_id_file):
@@ -186,10 +229,10 @@ def getOrAccessCoachCalendar(service):
 
 
 
-
-# GOOD
-# handles login and calendar access setup
 def authorization():
+   """
+   Handles login and calendar access setup
+   """
    creds = None
    if os.path.exists('token.json'):
        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
@@ -208,8 +251,14 @@ def authorization():
    return service
 
 
-# prints out all scheduled events
 def print_scheduled_events(service, calendar_id):
+   """
+    Prints out all scheduled events
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+    """
    # Get events from today to 30 days in the future
    now = datetime.datetime.utcnow().isoformat() + 'Z'
    then = (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat() + 'Z'
@@ -228,9 +277,14 @@ def print_scheduled_events(service, calendar_id):
 
 
 
-
-# Helper function to get unavailable times from the calendar
 def get_unavailable_times(service, calendar_id):
+   """
+    Helper function to get unavailable times from the calendar
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+    """
    now = datetime.datetime.utcnow().isoformat() + 'Z'
    then = (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat() + 'Z'
   
@@ -253,10 +307,14 @@ def get_unavailable_times(service, calendar_id):
   
 
 
-
-
-# Helper function to schedule a single session
 def schedule_session(service, calendar_id, name, current_time, session_duration, unavailable_times):
+   """
+    Helper function to schedule a single session
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+    """
    while True:
        session_end_time = current_time + datetime.timedelta(minutes=session_duration)
        can_schedule = True
@@ -281,14 +339,19 @@ def schedule_session(service, calendar_id, name, current_time, session_duration,
 
 
 
-
-# Main function to dedicate assignment times
 def dedicateAssignmentTimes(service, calendar_id, assignments):
+   """
+    Main function to dedicate assignment times
+    
+    Args:
+        service (string): Resource object for interacting with Google's calendar API
+        calendar_id (string): id of calendar to write to
+        assignments ([obj]): array of assignment objects to convert into calendar blocked study sessions
+    """
    unavailable_times = get_unavailable_times(service, calendar_id)
    assignments.sort(key=lambda x: x['due date'])
    current_time = datetime.datetime.now().replace(tzinfo=None, microsecond=0)
    current_time = current_time.replace(minute=0, second=0) + datetime.timedelta(hours=1)
-
 
    for assignment in assignments:
        name = assignment['name']
@@ -351,58 +414,3 @@ def dedicateAssignmentTimes(service, calendar_id, assignments):
 
 
        slow_print(f"Finished scheduling {name}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def main():
-
-
-   service = authorization()
-   calendar_id = getOrAccessCoachCalendar(service)
-   # create_unavailable_events(service, calendar_id)
-  
-   assignments = [
-   {
-       "name": "Math Homework",
-       "due date": datetime.date(2024, 11, 30), 
-       "due time": datetime.time(23, 59),       
-       "time_allocated": 240,                   
-       "sessions": 4                            
-   },
-   {
-        "name": "Science Project",
-         "due date": datetime.date(2024, 11, 25),
-        "due time": datetime.time(17, 0),
-        "time_allocated": 180,                   
-        "sessions": 3                            
-    },
-    {
-        "name": "English Essay",
-        "due date": datetime.date(2024, 11, 27),
-        "due time": datetime.time(14, 30),
-        "time_allocated": 300,                   
-        "sessions": 5                            
-    }
-   ]
-  
-   # Schedule assignments and add them to Google Calendar
-   dedicateAssignmentTimes(service, calendar_id, assignments)
-
-
-   # Print scheduled events
-   print_scheduled_events(service, calendar_id)
-
-
-main()
-
