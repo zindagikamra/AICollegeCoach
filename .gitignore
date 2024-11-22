@@ -1,1 +1,6 @@
+# Secrets and credentials
+.env
 *.json
+.venv
+**/venv/
+**/__pycache__/
