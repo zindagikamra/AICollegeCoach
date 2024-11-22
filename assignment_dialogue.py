@@ -4,6 +4,7 @@ from openai import OpenAI
 from datetime import datetime, time
 import json
 import time
+from scheduler_logic import slow_print
 # Load environment variables
 load_dotenv()
 
@@ -12,21 +13,6 @@ client = OpenAI(
     # api_key=os.getenv("OPENAI_API_KEY"),
     # organization=os.getenv("OPENAI_ORGANIZATION_ID")
 )  # It will automatically use OPENAI_API_KEY from environment
-
-def slow_print(text, delay=0.01):
-    """
-    Prints text character by character with a delay to emulate chatbot style output.
-    
-    Args:
-        text (str): The text to print
-        delay (float): Delay in seconds between each character (default 0.01)
-    """
-    for char in text:
-        print(char, end='', flush=True)  
-        time.sleep(delay) 
-    print()
-
-assignments = []
 
 def get_initial_assignment_info(is_first_assignment=True):
     """
@@ -57,7 +43,8 @@ def get_initial_assignment_info(is_first_assignment=True):
     
     print("\nAI College Coach: ", end='')
     slow_print(prompt)
-    user_response = input("You: ")
+    slow_print("You: ")
+    user_response = input()
     return user_response
 
 def process_assignment_dialogue(user_input, assignment_data):
@@ -146,7 +133,8 @@ def handle_missing_info(missing_fields, assignment_data):
     slow_print(question)
     
     # Get user's response
-    user_response = input("You: ")
+    slow_print("You: ")
+    user_response = input()
     
     # Process the response for all fields
     field_response = client.chat.completions.create(
@@ -192,11 +180,12 @@ def handle_emotional_checkin():
     # Ask user about their feelings
     print("\nAI College Coach: ", end='')
     slow_print("How are you feeling about these assignments?")
-    user_response = input("You: ")
+    slow_print("You: ")
+    user_response = input()
     
     # Get emotion from fine-tuned model
     emotion_response = client.chat.completions.create(
-        model="ft:gpt-4o-mini-2024-07-18:personal:aicollegecoach-model:ASuxr3X3",
+        model=os.getenv("OPENAI_FINETUNED_MODEL"),
         messages=[
             {"role": "system", "content": "Detect the emotions in the input in a couple words."},
             {"role": "user", "content": user_response}
@@ -229,6 +218,7 @@ def collect_assignment_info(is_first_assignment=True):
     Returns:
         list: List of dictionaries containing assignment information
     """
+    assignments = []
     assignment_data = {
         "name": None,
         "due date": None,
@@ -249,15 +239,9 @@ def collect_assignment_info(is_first_assignment=True):
     assignments.append(assignment_data)
     
     # Ask about another assignment
-    another = input("\nWould you like to add another exam or assignment? (yes/no): ").lower()
+    slow_print("\nWould you like to add another exam or assignment? (yes/no): ")
+    another = input().lower()
     if another in ['y', 'yes']:
-        collect_assignment_info(False)  # Recursive call with is_first_assignment=False
+        assignments.extend(collect_assignment_info(False)) # Recursive call with is_first_assignment=False
     
     return assignments
-
-if __name__ == "__main__":
-    collect_assignment_info()
-    # can erase this print statement, just for testing
-    print(assignments)
-    # once user respons no, ask the user "How they are feeling about the assignments?"
-    handle_emotional_checkin()
