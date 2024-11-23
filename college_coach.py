@@ -12,13 +12,6 @@ def collegeCoachAI():
     
     handle_emotional_checkin()
 
-# TO DELETE (Sample prompts for demo):
-# I have a speech to prep for which is on monday at 9 am, I need to study for it for 6 hours over 3 sessions
-# I have an AI assignment due on Saturday at 6PM which I want to work on for 4 hours over 1 session
-# I have an assignment called challenge 7 due on Monday at 9PM, I want to work on it for 6 hours over 3 sesisons
-# I have a book report to complete on tuesday by midnight, I want to study it over 1 large study session 8 hours long
-
-
 # Simply run the file to interact with CollegeCoach!
 if __name__ == "__main__":
     collegeCoachAI()
