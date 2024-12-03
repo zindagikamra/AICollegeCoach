@@ -55,11 +55,23 @@ In order to download all the needed dependencies and run the program, please fol
   
     pip install -r requirements.txt
 
-  3. Once you have all of the needed tokens and dependencies, run the following command to train the models:
+  3. Once you have all of the needed tokens and dependencies, run the following command to prepare the dataset:
 
-    COMMAND(S) FOR TRAINING MODEL
+    python prepare_dataset.py
+    openai tools fine_tunes.prepare_data -f empatheticdialogues_preprocessed.jsonl
+
+  4. Answer Y to all the questions asked, and the data will be split to train and validation sets.
+     
+  5. After running the above command, upload the files to the OpenAI platform to fine-tune the model by running the following command:   
     
-  4. Finally, once the model is trained, run the following command to launch the college coach:
+    openai api files.create -f <training-file>.jsonl -p fine-tune
+    openai api files.create -f <validation-file>.jsonl -p fine-tune
+
+  6. After uploading both files, run the following command to start the fine-tuning process:
+
+    python fine_tune.py
+    
+  7. Finally, once the model is trained, run the following command to launch the college coach:
 
     python college_coach.py
 
