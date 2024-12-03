@@ -72,7 +72,7 @@ The tokens created for the Google Calendar API should be stored in a config.json
     
     OPENAI_MODEL_NAME='gpt-4o-mini'
     OPENAI_API_KEY='YOUR_KEY'
-    OPENAI_FINETUNED_MODEL='YOUR_FINETUNED_MODEL_ACCESS_STRING'
+    OPENAI_FINETUNED_MODEL='YOUR_FINETUNED_MODEL_ID'
 
 ## Acknowledgments and Resources
 This project utilizes the following datasets, APIs, and Models:
