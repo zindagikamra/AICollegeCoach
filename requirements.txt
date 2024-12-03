@@ -3,3 +3,7 @@ google-auth>=2.22.0
 google-api-python-client>=2.0.0
 openai==1.54.4
 python-dotenv==1.0.1
+datasets
+google-auth-httplib2
+scikit-learn
+pandas
